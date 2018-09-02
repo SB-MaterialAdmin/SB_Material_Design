@@ -77,6 +77,13 @@ class Database {
     return $this->PDO->getAttribute($attr);
   }
 
+  public function GetStatement($clear = true) {
+    $statement = $this->Statement;
+    if ($clear)
+      $this->Statement = null;
+    return $statement;
+  }
+
   /**
    * internals
    */

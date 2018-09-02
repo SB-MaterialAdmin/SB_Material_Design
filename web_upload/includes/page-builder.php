@@ -142,4 +142,16 @@ BuildBreadcrumbs();
 if(!empty($page))
 	include $page;
 include_once(TEMPLATES_PATH . '/footer.php');
-?>
+
+/**
+ * Run router.
+ * Before run, we should add all available routes.
+ * We store routes in table `{{prefix}}routes`
+ */
+$DB = \DatabaseManager::GetConnection('sourcebans');
+$Result = $DB->Query('SELECT `url`, `parameters` FROM `{{prefix}}routes` WHERE `enabled` = 1;');
+
+\Router::Initialize();
+foreach ($Result->All() as $Data)
+  \Router::Add($Data['url'], unserialize($Data['parameters']));
+\Router::Run();

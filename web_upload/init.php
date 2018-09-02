@@ -308,32 +308,15 @@ $FlagsStatement->EndData();
 // ---------------------------------------------------
 // Setup our templater
 // ---------------------------------------------------
-require(INCLUDES_PATH . '/CSmarty.php');
-
-global $theme, $userbank;
+global $userbank;
 
 if(!@file_exists(SB_THEME . "/theme.conf.php"))
-	die($GLOBALS['translator']->retrieve("init::incorrect_theme"));
+  die($GLOBALS['translator']->retrieve("init::incorrect_theme"));
 
 if(!@is_writable(SB_THEME_COMPILE))
-    die($GLOBALS['translator']->retrieve("init::themec_not_writable", ["cache_path" => SB_THEME_COMPILE]));
+  die($GLOBALS['translator']->retrieve("init::themec_not_writable", ["cache_path" => SB_THEME_COMPILE]));
 
-$theme = new CSmarty();
-$theme->error_reporting   = E_ALL ^ E_NOTICE;
-$theme->use_sub_dirs      = false;
-$theme->compile_id        = "TCache";
-$theme->caching           = false;
-$theme->template_dir      = SB_THEME;
-$theme->template_user_dir = SB_USER_THEME;
-$theme->compile_dir       = SB_THEME_COMPILE;
-
-$theme->assign('SITE_ADDRESS',  SB_WP_URL);
-$theme->assign('SBConfig',      ReplaceArrayKeyNames($config, ".", "_"));
-
-if ((isset($_GET['debug']) && $_GET['debug'] == 1) || defined("DEVELOPER_MODE") )
-{
-	$theme->force_compile = true;
-}
+\TemplateManager::Initialize(SB_THEME, SB_THEME_COMPILE, INCLUDES_PATH . '/Twig/');
 
 // ---------------------------------------------------
 // Start our session manager.

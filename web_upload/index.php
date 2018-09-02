@@ -54,15 +54,28 @@ $xajax->processRequests();
 
 if (isCsrfEnabled())
   \SessionManager::initCsrf();
-include_once(INCLUDES_PATH . "/page-builder.php");
 
+/**
+ * Run router.
+ * Before run, we should add all available routes.
+ * We store routes in table `{{prefix}}routes`
+ */
+$DB = \DatabaseManager::GetConnection('sourcebans');
+$Result = $DB->Query('SELECT `url`, `parameters` FROM `{{prefix}}routes` WHERE `enabled` = 1;');
 
+\Router::Initialize();
+foreach ($Result->All() as $Data)
+  \Router::Add($Data['url'], unserialize($Data['parameters']));
+$reply = \Router::Run();
 
-
-
-
-
-
-
+/**
+ * Now we can send response.
+ *
+ * Response retrieved from controller, and always should be 
+ * abstracted from Reply\AbstractReply.
+ */
+if (!is_subclass_of($reply, 'Reply\AbstractReply', false))
+  throw new \LogicException('Controller returned unknown reply.');
+$reply->getResponse();
 
 //Yarr!
