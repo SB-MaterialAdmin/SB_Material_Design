@@ -79,4 +79,138 @@ class SBCronJob {
     // TODO: migrate avatar cache updater.
     $finished = true;
   }
+
+  public static function RebuildRightsCache(&$data, &$finished) {
+    $db = self::db();
+
+    // Well... This is hard task.
+    // And dangerous.
+
+    // First step: start transaction.
+    $db->BeginTxn();
+
+    // Second step: drop all data.
+    $db->Query("DELETE FROM `{{prefix}}permissions_cache`;");
+
+    // Third step: load all data.
+    $AdminsBase   = $db->Query("SELECT `aid`, `user`, `web_flags` FROM `{{prefix}}admins` WHERE `deleted` = 0")
+      ->All();
+
+    // Four step: prepare statements.
+    $db->Prepare("
+      INSERT INTO
+        `{{prefix}}permissions_cache`
+      (`user`, `auth_type`, `auth_identifier`,
+       `sid`, `gid`, `password`,
+       `srv_flags`, `web_flags`,
+       `immunity`
+      ) VALUES (
+        :user, :auth_type, :auth_identifier,
+        :sid, :gid, :password,
+        :srv_flags, :web_flags,
+        :immunity
+      );
+    ");
+    $InsertStatement = $db->GetStatement();
+
+    $db->Prepare("
+    SELECT
+      `type`, `identifier`
+    FROM
+      `{{prefix}}admins_auths`
+    WHERE
+      `aid` = :aid;
+    ");
+    $SelectAuthStatement = $db->GetStatement();
+
+    $db->Prepare("
+      SELECT
+        `servers`, `gid`, `password`, `expires`, `immunity`, `web_flags`, `server_flags`
+      FROM
+        `{{prefix}}admins_rights`
+      WHERE
+        `aid` = :aid
+    ");
+    $SelectPermissionsStatement = $db->GetStatement();
+
+    // Five step: build cache.
+    $Cache = [];
+    foreach ($AdminsBase as $AdminBase) {
+      // Init new variables: aid and user.
+      $aid = $AdminBase['aid'];
+      $user = $AdminBase['user'];
+
+      // Grab all existing auths.
+      $SelectAuthStatement->BindData('aid', $aid);
+      $SelectAuthStatement->Execute();
+
+      // Check existing any user auth.
+      if ($SelectAuthStatement->RowCount() < 0) {
+        continue; // skip, if no one auth added.
+      }
+
+      // Get all auths and finish this query.
+      $Auths = $SelectAuthStatement->All();
+      $SelectAuthStatement->EndData();
+
+      // Grab all existing right entries.
+      $SelectPermissionsStatement->BindData('aid', $aid);
+      $SelectPermissionsStatement->Execute();
+
+      // Check existing any user permission.
+      if ($SelectPermissionsStatement->RowCount() < 0) {
+        continue; // skip, if no one permission rule added.
+      }
+
+      // Get all permissions and finish this query.
+      $Permissions = $SelectPermissionsStatement->All();
+      $SelectPermissionsStatement->EndData();
+
+      // Now, work with existing data.
+      foreach ($Permissions as $PermissionEntry) {
+        $Servers = json_decode($PermissionEntry['servers'], true);  // parse servers.
+
+        foreach ($Servers as $Server) {
+          // Build permission ID.
+          $PermissionID   = "{$aid}_{$Server}";
+          $CacheEntry = [
+            'user'      => $user,
+            'sid'       => $Server,
+            'password'  => $PermissionEntry['password'],
+            'srv_flags' => $PermissionEntry['server_flags'],
+            'web_flags' => (
+              $PermissionEntry['web_flags'] | $AdminBase['web_flags']
+            ),
+            'immunity'  => $PermissionEntry['immunity'],
+          ];
+
+          // Work with all auths.
+          foreach ($Auths as $Auth) {
+            $Type = $Auth['type'];
+            $Id   = $Auth['identifier'];
+            $CacheEntry['auth_type']        = $Type;
+            $CacheEntry['auth_identifier']  = $Id;
+
+            // Create unique permission ID for this auth.
+            $AuthID  = md5("{$Type}_{$Id}");
+            $CacheID = "{$PermissionID}_{$AuthID}";
+
+            // Add our entry to cache.
+            $Cache[$CacheID] = $CacheEntry;
+          }
+        }
+      }
+    }
+
+    // Six step: push all data to database.
+    foreach ($Cache as $CacheEntry) {
+      $InsertStatement->BindData($CacheEntry);
+      $InsertStatement->Execute();
+      $InsertStatement->EndData();
+    }
+
+    // Seven step: finish transaction.
+    $db->EndTxn();
+    $finished = true;
+  }
 }

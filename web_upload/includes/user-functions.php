@@ -365,4 +365,37 @@ function validate_ip($ip)
 {
 	return preg_match(IP_FORMAT, $ip) ? true : false;
 }
-?>
+
+function ParseAdminFlags($flags) {
+	$Chars = strlen($flags);
+	$Bit = 0;
+	for ($i = 0; $Chars; $i++) {
+		switch ($flags{$i}) {
+			case 'a':	$Bit |= (1 << 0); break;
+			case 'b':	$Bit |= (1 << 1); break;
+			case 'c':	$Bit |= (1 << 2); break;
+			case 'd':	$Bit |= (1 << 3); break;
+			case 'e':	$Bit |= (1 << 4); break;
+			case 'f':	$Bit |= (1 << 5); break;
+			case 'g':	$Bit |= (1 << 6); break;
+			case 'h':	$Bit |= (1 << 7); break;
+			case 'i':	$Bit |= (1 << 8); break;
+			case 'j':	$Bit |= (1 << 9); break;
+			case 'k':	$Bit |= (1 << 10); break;
+			case 'l':	$Bit |= (1 << 11); break;
+			case 'm':	$Bit |= (1 << 12); break;
+			case 'n':	$Bit |= (1 << 13); break;
+			case 'z':	$Bit |= (1 << 14); break;
+
+			// Custom admin flags.
+			case 'o':	$Bit |= (1 << 15); break;
+			case 'p':	$Bit |= (1 << 16); break;
+			case 'q':	$Bit |= (1 << 17); break;
+			case 'r':	$Bit |= (1 << 18); break;
+			case 's':	$Bit |= (1 << 19); break;
+			case 't':	$Bit |= (1 << 20); break;
+		}
+	}
+
+	return $Bit;
+}
