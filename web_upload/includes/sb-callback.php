@@ -937,6 +937,9 @@ function AddServerGroupName()
 
 function AddAdmin_pay($mask, $srv_mask, $a_name, $a_steam, $a_email, $a_password, $a_password2,  $a_sg, $a_wg, $a_serverpass, $a_webname, $a_servername, $server, $singlesrv, $skype, $comment, $vk, $a_code)
 {
+  // TODO: Снести нахер эту функцию. Подвергнуть фатальному
+  // рефакторингу весь AJAX код на бэке после увиденного.
+
   $objResponse = new xajaxResponse();
   global $userbank, $username;
   
@@ -1014,47 +1017,51 @@ function AddAdmin_pay($mask, $srv_mask, $a_name, $a_steam, $a_email, $a_password
     }
   }
   // If they didnt type a steamid
-  if((empty($a_steam) || strlen($a_steam) < 10))
+  if ($type == 0)
   {
-    $error++;
-    $objResponse->addAssign("steam.msg", "innerHTML", "Введите ваш Steam ID или Community ID. Его можно найти в консоле, написав <b>status</b>.");
-    $objResponse->addScript("$('steam.msg').setStyle('display', 'block');");
-  }
-  else
-  {
-    // Validate the steamid or fetch it from the community id
-    if((!is_numeric($a_steam) 
-    && !validate_steam($a_steam))
-    || (is_numeric($a_steam) 
-    && (strlen($a_steam) < 15
-    || !validate_steam($a_steam = FriendIDToSteamID($a_steam)))))
+    if(empty($a_steam))
     {
       $error++;
-      $objResponse->addAssign("steam.msg", "innerHTML", "Введите действительный Steam ID или Community ID.");
+      $objResponse->addAssign("steam.msg", "innerHTML", "Введите Steam ID или Community ID");
       $objResponse->addScript("$('steam.msg').setStyle('display', 'block');");
     }
     else
     {
-      if(is_taken("admins", "authid", $a_steam))
+      try
       {
-        $admins = $userbank->GetAllAdmins();
-        foreach($admins as $admin)
-        {
-          if($admin['authid'] == $a_steam)
-          {
-            $name = $admin['user'];
-            break;
-          }
-        }
+        $a_steam = \CSteamID::factory($a_steam)->v2;
+      }
+      catch (\Exception $e)
+      {
         $error++;
-        $objResponse->addAssign("steam.msg", "innerHTML", "Этот Steam ID уже используется одним из администраторов!");
+        $objResponse->addAssign("steam.msg", "innerHTML", "Введите действительный Steam ID или Community ID");
         $objResponse->addScript("$('steam.msg').setStyle('display', 'block');");
       }
-      else
+    }
+  }
+  else
+  {
+    // TODO: Внедрить сюда продление админа вместо вывода
+    // ошибки, если группа совпадает при неистёкшей админке.
+    if(is_taken("admins", "authid", $a_steam))
+    {
+      $admins = $userbank->GetAllAdmins();
+      foreach($admins as $admin)
       {
-        $objResponse->addAssign("steam.msg", "innerHTML", "");
-        $objResponse->addScript("$('steam.msg').setStyle('display', 'none');");
+        if($admin['authid'] == $a_steam)
+        {
+          $name = $admin['user'];
+          break;
+        }
       }
+      $error++;
+      $objResponse->addAssign("steam.msg", "innerHTML", "Этот Steam ID уже используется одним из администраторов!");
+      $objResponse->addScript("$('steam.msg').setStyle('display', 'block');");
+    }
+    else
+    {
+      $objResponse->addAssign("steam.msg", "innerHTML", "");
+      $objResponse->addScript("$('steam.msg').setStyle('display', 'none');");
     }
   }
   
@@ -1409,6 +1416,9 @@ function AddAdmin($mask, $srv_mask, $a_name, $a_steam, $a_email, $a_password, $a
     $objResponse->addScript("$('name.msg').setStyle('display', 'block');");
   }
   else{
+    // TODO: Вырезать нахер эти проверки, когда этот PR будет реализован и
+    // смерджен в оба плагина:
+    // https://github.com/SB-MaterialAdmin/NewServer/pull/102
     if(strstr($a_name, '/'))
     {
       $error++;
@@ -1436,48 +1446,51 @@ function AddAdmin($mask, $srv_mask, $a_name, $a_steam, $a_email, $a_password, $a
       }
     }
   }
+
   // If they didnt type a steamid
-  if((empty($a_steam) || strlen($a_steam) < 10))
+  if ($type == 0)
   {
-    $error++;
-    $objResponse->addAssign("steam.msg", "innerHTML", "Введите Steam ID или Community ID админа.");
-    $objResponse->addScript("$('steam.msg').setStyle('display', 'block');");
-  }
-  else
-  {
-    // Validate the steamid or fetch it from the community id
-    if((!is_numeric($a_steam) 
-    && !validate_steam($a_steam))
-    || (is_numeric($a_steam) 
-    && (strlen($a_steam) < 15
-    || !validate_steam($a_steam = FriendIDToSteamID($a_steam)))))
+    if(empty($a_steam))
     {
       $error++;
-      $objResponse->addAssign("steam.msg", "innerHTML", "Введите действительный Steam ID или Community ID.");
+      $objResponse->addAssign("steam.msg", "innerHTML", "Введите Steam ID или Community ID");
       $objResponse->addScript("$('steam.msg').setStyle('display', 'block');");
     }
     else
     {
-      if(is_taken("admins", "authid", $a_steam))
+      try
       {
-        $admins = $userbank->GetAllAdmins();
-        foreach($admins as $admin)
-        {
-          if($admin['authid'] == $a_steam)
-          {
-            $name = $admin['user'];
-            break;
-          }
-        }
+        $a_steam = \CSteamID::factory($a_steam)->v2;
+      }
+      catch (\Exception $e)
+      {
         $error++;
-        $objResponse->addAssign("steam.msg", "innerHTML", "Этот Steam ID уже используется админом ".htmlspecialchars(addslashes($name)).".");
+        $objResponse->addAssign("steam.msg", "innerHTML", "Введите действительный Steam ID или Community ID");
         $objResponse->addScript("$('steam.msg').setStyle('display', 'block');");
       }
-      else
+    }
+  }
+  else
+  {
+    if(is_taken("admins", "authid", $a_steam))
+    {
+      $admins = $userbank->GetAllAdmins();
+      foreach($admins as $admin)
       {
-        $objResponse->addAssign("steam.msg", "innerHTML", "");
-        $objResponse->addScript("$('steam.msg').setStyle('display', 'none');");
+        if($admin['authid'] == $a_steam)
+        {
+          $name = $admin['user'];
+          break;
+        }
       }
+      $error++;
+      $objResponse->addAssign("steam.msg", "innerHTML", "Этот Steam ID уже используется одним из администраторов!");
+      $objResponse->addScript("$('steam.msg').setStyle('display', 'block');");
+    }
+    else
+    {
+      $objResponse->addAssign("steam.msg", "innerHTML", "");
+      $objResponse->addScript("$('steam.msg').setStyle('display', 'none');");
     }
   }
   
@@ -2237,22 +2250,27 @@ function AddBan($nickname, $type, $steam, $ip, $length, $dfile, $dname, $reason,
   
   $error = 0;
   // If they didnt type a steamid
-  if(empty($steam) && $type == 0)
+  if ($type == 0)
   {
-    $error++;
-    $objResponse->addAssign("steam.msg", "innerHTML", "Введите Steam ID или Community ID");
-    $objResponse->addScript("$('steam.msg').setStyle('display', 'block');");
-  }
-  else if(($type == 0 
-  && !is_numeric($steam) 
-  && !validate_steam($steam))
-  || (is_numeric($steam) 
-  && (strlen($steam) < 15
-  || !validate_steam($steam = FriendIDToSteamID($steam)))))
-  {
-    $error++;
-    $objResponse->addAssign("steam.msg", "innerHTML", "Введите действительный Steam ID или Community ID");
-    $objResponse->addScript("$('steam.msg').setStyle('display', 'block');");
+    if(empty($steam))
+    {
+      $error++;
+      $objResponse->addAssign("steam.msg", "innerHTML", "Введите Steam ID или Community ID");
+      $objResponse->addScript("$('steam.msg').setStyle('display', 'block');");
+    }
+    else
+    {
+      try
+      {
+        $steam = \CSteamID::factory($steam)->v2;
+      }
+      catch (\Exception $e)
+      {
+        $error++;
+        $objResponse->addAssign("steam.msg", "innerHTML", "Введите действительный Steam ID или Community ID");
+        $objResponse->addScript("$('steam.msg').setStyle('display', 'block');");
+      }
+    }
   }
   else if (empty($ip) && $type == 1)
   {
@@ -3739,22 +3757,27 @@ function AddBlock($nickname, $type, $steam, $length, $reason)
   $steam = trim($steam);
   
   $error = 0;
-  // If they didnt type a steamid
-  if(empty($steam))
+  if ($type == 0)
   {
-    $error++;
-    $objResponse->addAssign("steam.msg", "innerHTML", "Введите Steam ID или Community ID");
-    $objResponse->addScript("$('steam.msg').setStyle('display', 'block');");
-  }
-  else if((!is_numeric($steam) 
-  && !validate_steam($steam))
-  || (is_numeric($steam) 
-  && (strlen($steam) < 15
-  || !validate_steam($steam = FriendIDToSteamID($steam)))))
-  {
-    $error++;
-    $objResponse->addAssign("steam.msg", "innerHTML", "Введите действительный Steam ID или Community ID");
-    $objResponse->addScript("$('steam.msg').setStyle('display', 'block');");
+    if(empty($steam))
+    {
+      $error++;
+      $objResponse->addAssign("steam.msg", "innerHTML", "Введите Steam ID или Community ID");
+      $objResponse->addScript("$('steam.msg').setStyle('display', 'block');");
+    }
+    else
+    {
+      try
+      {
+        $steam = \CSteamID::factory($steam)->v2;
+      }
+      catch (\Exception $e)
+      {
+        $error++;
+        $objResponse->addAssign("steam.msg", "innerHTML", "Введите действительный Steam ID или Community ID");
+        $objResponse->addScript("$('steam.msg').setStyle('display', 'block');");
+      }
+    }
   }
   else
   {

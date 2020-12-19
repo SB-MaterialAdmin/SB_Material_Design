@@ -1,4 +1,5 @@
 <?php
+
 class CSteamId {
   private static $_cache = [];
 
@@ -54,6 +55,20 @@ class CSteamId {
 
     if (strncmp('7656', $sid, 4) == 0 && strlen($sid) == 17) {
       return intval(bcsub($sid, '76561197960265728', 0));
+    }
+
+    // try handle as URL.
+    if (preg_match('/^https?:\/\/steamcommunity\.com\/profiles\/7656(.{13})\/?$/', $sid, $matches, PREG_OFFSET_CAPTURE))
+    {
+      return self::ResolveToAccountID('7656' . $matches[1][0]);
+    }
+    if (preg_match('/^https?:\/\/steamcommunity\.com\/id\/([\w\d-_]{1,})\/?$/', $sid, $matches, PREG_OFFSET_CAPTURE))
+    {
+      $client = \HTTP::client();
+      $response = $client->setUrl('https://api.steampowered.com/ISteamUser/ResolveVanityURL/v0001/')
+        ->setBody(sprintf('key=%s&vanityurl=%s', STEAM_API_KEY, $matches[1][0]))->send()->JSON(true);
+
+      if ($response['response']['success'] == 1) return self::ResolveToAccountID($response['response']['steamid']);
     }
 
     // we don't know, what is this.
