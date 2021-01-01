@@ -1,0 +1,18 @@
+{
+    "require": {
+        "php": "^5.5",
+        "slim/slim": "^3.0",
+        "orx0r/slim3-controller": "^0.1.2",
+        "zeuxisoo/slim-whoops": "0.6.*",
+        "fenom/fenom": "^2.11",
+        "vlucas/spot2": "~2.0",
+        "sabre/event": "~2.0.2",
+        "doctrine/dbal": "~2.5.4"
+    },
+
+    "autoload": {
+        "psr-4": {
+            "": "./"
+        }
+    }
+}
